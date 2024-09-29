@@ -1,7 +1,7 @@
 # Giro de Peppe
 ## Quarkus - Go - C++ - Tempo | Playground
 
-This is a playground project to test the integration between Quarkus, Go and Tempo.
+This is a playground project to test the integration between Quarkus, Go, C++ and Tempo.
 
 - Run the following command to start the project:
 
