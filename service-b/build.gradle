@@ -1,0 +1,78 @@
+plugins {
+    id 'java'
+    id 'io.quarkus'
+    id "org.sonarqube" version "5.0.0.4638"
+    id 'jacoco'
+    id("io.freefair.lombok") version "8.10"
+}
+
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+jacocoTestReport {
+    reports {
+        xml.required= true
+        html.required = true
+    }
+}
+
+sonarqube {
+    properties {
+        property "sonar.coverage.jacoco.xmlReportPaths", "${project.buildDir}/jacoco-report/jacoco.xml"
+    }
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+    implementation 'io.quarkus:quarkus-resteasy-client'
+    implementation 'io.quarkus:quarkus-resteasy-jackson'
+    implementation 'io.quarkus:quarkus-resteasy-client-jackson'
+    implementation 'io.quarkus:quarkus-arc'
+
+    implementation 'io.quarkus:quarkus-smallrye-health'
+    implementation 'io.quarkus:quarkus-smallrye-openapi'
+
+    testImplementation 'io.quarkus:quarkus-junit5'
+    testImplementation 'io.quarkus:quarkus-junit5-mockito'
+    testImplementation 'io.rest-assured:rest-assured'
+
+    implementation 'org.wiremock:wiremock:3.5.4'
+
+    implementation 'io.quarkus:quarkus-opentelemetry'
+    implementation 'io.quarkus:quarkus-opentelemetry-exporter-otlp'
+
+    implementation 'io.quarkus:quarkus-smallrye-reactive-messaging-amqp'
+
+    implementation 'io.quarkus:quarkus-micrometer'
+    implementation 'io.quarkus:quarkus-micrometer-registry-prometheus'
+}
+
+group 'com.sigeosrl'
+version '0.0.1'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+test {
+    systemProperty "java.util.logging.manager", "org.jboss.logmanager.LogManager"
+}
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('printVersion') {
+    println "${version}"
+}

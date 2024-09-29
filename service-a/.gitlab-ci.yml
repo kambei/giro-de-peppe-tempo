@@ -1,0 +1,35 @@
+image: gradle:8.6-jdk21
+
+.only-version-change:
+  refs:
+    - main
+  changes:
+    - build.gradle
+
+stages:
+  - version
+  - build
+
+version:
+  stage: version
+  script:
+    - VERSION=$(gradle -q printVersion)
+    - echo "VERSION=$VERSION" >> version.env
+  artifacts:
+    reports:
+      dotenv: version.env
+  only: !reference [.only-version-change]
+
+build_image:
+  stage: build
+  image: docker:latest  # Use the Docker image to build images
+  services:
+    - docker:dind       # Start the Docker-in-Docker service for nested Docker usage
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY  # Login to registry
+    - docker build -t $CI_REGISTRY_IMAGE:$VERSION -t $CI_REGISTRY_IMAGE .  # Build with dynamic tag
+    - docker push $CI_REGISTRY_IMAGE --all-tags       # Push to registry
+  only: !reference [.only-version-change]
+  needs:
+    - job: version
+      artifacts: true

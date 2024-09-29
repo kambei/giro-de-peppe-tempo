@@ -1,0 +1,106 @@
+services:
+
+  service-go:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    environment:
+      - OTLP_ENDPOINT=tempo:4318
+    # ports:
+    #   - "8080:8080"
+    depends_on:
+      - tempo
+    networks:
+      - tracing
+
+  service-b:
+    image: service-b
+    build:
+      context: ./service-b
+      dockerfile: Dockerfile
+    environment:
+      - quarkus.otel.enabled=true
+      - quarkus.otel.exporter.otlp.endpoint=http://tempo:4317
+      - quarkus.otel.propagators=tracecontext,baggage
+      - quarkus.rest-client.service-a.url=http://service-a:8081
+      - amqp-host=queue
+      - amqp-port=5672
+    ports:
+      - 1666:8082
+    networks:
+      - tracing
+
+  service-a:
+    image: service-a
+    build:
+      context: ./service-a
+      dockerfile: Dockerfile
+    environment:
+      - serive-go.enabled=true
+      - quarkus.otel.enabled=true
+      - quarkus.otel.exporter.otlp.endpoint=http://tempo:4317
+      - quarkus.otel.propagators=tracecontext,baggage
+      - quarkus.rest-client.service-go.url=http://service-go:8080
+      - amqp-host=queue
+      - amqp-port=5672
+    # ports:
+    #   - 8081:8081
+    networks:
+      - tracing
+
+  tempo:
+    image: grafana/tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "14268:14268"  # jaeger ingest
+      - "3200:3200"   # tempo
+      - "9095:9095" # tempo grpc
+      - "4317:4317"  # otlp grpc
+      - "4318:4318"  # otlp http
+      - "9411:9411"   # zipkin
+    networks:
+      - tracing
+
+  grafana:
+    image: grafana/grafana
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor traceQLStreaming metricsSummary
+    ports:
+      - "3000:3000"
+    networks:
+      - tracing
+
+  queue:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    command: >
+      /bin/bash -c "rabbitmq-plugins enable rabbitmq_amqp1_0 && rabbitmq-server"
+    networks:
+      - tracing
+
+  cpp-tempo:
+    image: cpp-tempo
+    build:
+      context: ./cpp
+      dockerfile: Dockerfile
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=tempo:4318
+    ports:
+      - "8080:8080"
+    networks:
+      - tracing
+
+networks:
+  tracing:
+    driver: bridge
+
+volumes:
+  grafana_data:
+  tempo_data:
