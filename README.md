@@ -6,10 +6,7 @@ This is a playground project to test the integration between Quarkus, Go, C++ an
 - Run the following command to start the project:
 
 ```bash
-docker compose build service-go
-docker compose build cpp-tempo
-docker compose build service-a
-docker compose build service-b
+docker compose pull
 ```
 
 ```bash
