@@ -4,6 +4,7 @@ services:
     build:
       context: ./go
       dockerfile: Dockerfile
+    image: ghcr.io/kambei/giro-de-peppe-tempo/go:latest
     environment:
       - OTLP_ENDPOINT=tempo:4318
     # ports:
@@ -14,7 +15,7 @@ services:
       - tracing
 
   service-b:
-    image: service-b
+    image: ghcr.io/kambei/giro-de-peppe-tempo/service-b:latest
     build:
       context: ./service-b
       dockerfile: Dockerfile
@@ -31,7 +32,7 @@ services:
       - tracing
 
   service-a:
-    image: service-a
+    image: ghcr.io/kambei/giro-de-peppe-tempo/service-a:latest
     build:
       context: ./service-a
       dockerfile: Dockerfile
@@ -86,7 +87,7 @@ services:
       - tracing
 
   cpp-tempo:
-    image: cpp-tempo
+    image: ghcr.io/kambei/giro-de-peppe-tempo/cpp:latest
     build:
       context: ./cpp
       dockerfile: Dockerfile
