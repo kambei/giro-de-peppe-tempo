@@ -34,7 +34,7 @@ jobs:
         with:
           context: ./${{ matrix.service }}  # Each service has its own directory with Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/your-repo/${{ matrix.service }}:latest
+          tags: ghcr.io/${{ github.repository_owner }}/ygiro-de-peppe-tempo/${{ matrix.service }}:latest
 
       # Optionally log out from Docker
       - name: Log out from GHCR
