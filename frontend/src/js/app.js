@@ -1,56 +1,62 @@
-// Simple implementation for demo purposes
-console.log('Script loaded');
+import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { trace } from '@opentelemetry/api';
 
-// Helper function to generate random IDs for trace and span
-function generateRandomId(length) {
-    const characters = '0123456789abcdef';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+// ✅ 1. Initialize OpenTelemetry Web Tracer Provider
+const provider = new WebTracerProvider();
+
+// ✅ 2. Use an OTLP Exporter (send traces to Tempo via HTTP)
+const exporter = new OTLPTraceExporter({
+    url: 'http://tempo:4318/v1/traces',  // Ensure Tempo is reachable
+});
+
+// ✅ 3. Attach an Exporter (BatchSpanProcessor)
+provider.getTracerProvider().addSpanProcessor(new BatchSpanProcessor(exporter));
+
+// ✅ 4. (Optional) Also log spans in the browser console for debugging
+provider.getTracerProvider().addSpanProcessor(new BatchSpanProcessor(new ConsoleSpanExporter()));
+
+provider.register();
+
+console.log('OpenTelemetry Initialized');
+
+// Helper function to create spans
+function createSpan(name) {
+    const tracer = trace.getTracer('frontend-app');
+    return tracer.startSpan(name);
 }
 
-// Wait for DOM to be loaded
+// ✅ Wait for DOM to be loaded
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Frontend app initialized');
-    
-    // Add event listener for button click
+
     const button = document.getElementById('my-button');
     const resultElement = document.getElementById('result');
-    
-    console.log('Button element:', button);
-    console.log('Result element:', resultElement);
-    
+
     button.addEventListener('click', () => {
         console.log('User clicked the button.');
-        
-        // Show result
+
+        // Start a new span for this action
+        const span = createSpan('User Clicked Button');
+
         resultElement.style.display = 'block';
-        
-        // Generate a random trace ID and span ID for demonstration
-        const traceId = generateRandomId(32);
-        const spanId = generateRandomId(16);
-        
-        resultElement.innerHTML = `
-            <p>Trace generated at: ${new Date().toLocaleTimeString()}</p>
-            <p>Trace ID: ${traceId}</p>
-            <p>Span ID: ${spanId}</p>
-        `;
-        
-        // Make a sample API call to demonstrate distributed tracing
+        resultElement.innerHTML = `<p>Trace generated at: ${new Date().toLocaleTimeString()}</p>`;
+
+        // Add traceparent header to propagate the trace
+        const traceparent = span.spanContext().traceId;
+        const spanId = span.spanContext().spanId;
+
+        console.log(`Generated Trace ID: ${traceparent}`);
+        console.log(`Generated Span ID: ${spanId}`);
+
         fetch('/api/hello', {
             headers: {
-                'traceparent': `00-${traceId}-${spanId}-01`
+                'traceparent': `00-${traceparent}-${spanId}-01`
             }
         })
-        .then(response => {
-            console.log('API response status:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.text();
-        })
+        .then(response => response.text())
         .then(data => {
             console.log('API response:', data);
             resultElement.innerHTML += `<p>API Response: ${data}</p>`;
@@ -58,6 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => {
             console.error('API error:', error);
             resultElement.innerHTML += `<p>API Error: ${error.message}</p>`;
+        })
+        .finally(() => {
+            // End the span when the request completes
+            span.end();
         });
     });
 });
