@@ -1,0 +1,17 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: giro-de-peppe-tempo/frontend:latest
+    ports:
+      - "8090:80"
+    networks:
+      - tracing
+    depends_on:
+      - tempo
+      - service-b
+
+networks:
+  tracing:
+    external: true

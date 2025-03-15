@@ -1,5 +1,18 @@
 services:
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ghcr.io/kambei/giro-de-peppe-tempo/frontend:latest
+    ports:
+      - "8090:80"
+    networks:
+      - tracing
+    depends_on:
+      - tempo
+      - service-b
+
   service-go:
     build:
       context: ./go
