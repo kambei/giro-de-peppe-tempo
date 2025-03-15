@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Distributed Tracing Demo</title>
+    <title>OpenTelemetry Frontend Tracing</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,7 +12,6 @@
             padding: 0;
             background-color: #f4f4f4;
         }
-        
         .container {
             width: 80%;
             max-width: 800px;
@@ -23,31 +22,23 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
-        
         h1 {
             color: #333;
             margin-bottom: 1rem;
         }
-        
         button {
             background-color: #4CAF50;
             color: white;
             border: none;
             padding: 12px 24px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
             font-size: 16px;
-            margin: 1rem 0;
             cursor: pointer;
             border-radius: 4px;
             transition: background-color 0.3s;
         }
-        
         button:hover {
             background-color: #45a049;
         }
-        
         #result {
             margin-top: 1rem;
             padding: 1rem;
@@ -58,18 +49,15 @@
             background-color: #f9f9f9;
             text-align: left;
         }
-        
         .trace-info {
             margin-bottom: 10px;
         }
-        
         .api-response {
             margin-top: 15px;
             padding: 10px;
             background-color: #e8f5e9;
             border-radius: 4px;
         }
-        
         .api-error {
             margin-top: 15px;
             padding: 10px;
@@ -77,7 +65,6 @@
             border-radius: 4px;
             color: #c62828;
         }
-        
         .page-timer {
             font-size: 12px;
             color: #757575;
@@ -87,36 +74,70 @@
 </head>
 <body>
     <div class="container">
-        <h1>OpenTelemetry Frontend Tracing Demo</h1>
+        <h1>OpenTelemetry Frontend Tracing</h1>
         <p>Click the button below to generate a trace</p>
-        <button id="traceButton" onclick="handleButtonClick()">Click Me</button>
+        <button id="traceButton">Click Me</button>
         <div id="result"></div>
         <div id="pageTimer" class="page-timer"></div>
     </div>
 
-    <script>
-        // Helper function to generate random IDs for trace and span
-        function generateRandomId(length) {
-            const characters = '0123456789abcdef';
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += characters.charAt(Math.floor(Math.random() * 16));
-            }
-            return result;
+    <!-- Load OpenTelemetry dynamically -->
+    <script type="module">
+        import { WebTracerProvider } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/sdk-trace-web/+esm';
+        import { BatchSpanProcessor, SimpleSpanProcessor } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/sdk-trace-base/+esm';
+        import { ConsoleSpanExporter } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/sdk-trace-base/+esm';
+        import { OTLPTraceExporter } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/exporter-trace-otlp-http/+esm';
+        import { trace } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/api/+esm';
+        import { Resource } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/resources/+esm';
+        import { SEMRESATTRS_SERVICE_NAME } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/semantic-conventions/+esm';
+
+        console.log("✅ OpenTelemetry modules loaded successfully!");
+
+        // ✅ Initialize OpenTelemetry Web Tracer Provider
+        const provider = new WebTracerProvider({
+            resource: new Resource({
+                [SEMRESATTRS_SERVICE_NAME]: 'frontend-app',
+            }),
+        });
+
+        // ✅ Configure OTLP Exporter (Send traces to Tempo)
+        const otlpExporter = new OTLPTraceExporter({
+            url: 'http://localhost:4318/v1/traces', // Ensure Tempo is reachable
+        });
+
+        provider.addSpanProcessor(new BatchSpanProcessor(otlpExporter)); // Send traces to Tempo
+        provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter())); // Debugging
+
+        provider.register();
+
+        console.log('🚀 OpenTelemetry Initialized');
+
+        // ✅ Helper function to create spans
+        function createSpan(name) {
+            const tracer = trace.getTracer('frontend-app');
+            return tracer.startSpan(name);
         }
-        
-        // Function to handle button click
+
+        // ✅ Function to handle button click with OpenTelemetry
         function handleButtonClick() {
             console.log('User clicked the button');
-            
-            // Show result
+
+            // Show result box
             const resultElement = document.getElementById('result');
             resultElement.style.display = 'block';
-            
-            // Generate a random trace ID and span ID for demonstration
-            const traceId = generateRandomId(32);
-            const spanId = generateRandomId(16);
-            
+
+            // ✅ Start a new span for this action
+            const span = createSpan('User Clicked Button');
+
+            // ✅ Generate trace headers dynamically
+            const traceId = span.spanContext().traceId;
+            const spanId = span.spanContext().spanId;
+            const traceparent = `00-${traceId}-${spanId}-01`;
+
+            console.log(`🛠️ Generated Trace ID: ${traceId}`);
+            console.log(`🛠️ Generated Span ID: ${spanId}`);
+            console.log(`🛠️ Generated Traceparent: ${traceparent}`);
+
             resultElement.innerHTML = `
                 <div class="trace-info">
                     <p>Trace generated at: ${new Date().toLocaleTimeString()}</p>
@@ -124,44 +145,30 @@
                     <p>Span ID: ${spanId}</p>
                 </div>
             `;
-            
-            // Make a sample API call to demonstrate distributed tracing
-            // Add a mock response for demo purposes since the API might not be available
-            console.log('Simulating API call with trace ID:', traceId);
-            
-            // First try the real API
-            fetch('/api/hello', {
-                headers: {
-                    'traceparent': `00-${traceId}-${spanId}-01`
-                }
+
+            // ✅ Send API request with traceparent header
+            fetch('http://localhost:1666/hello', {
+                headers: { 'traceparent': traceparent }
             })
-            .then(response => {
-                console.log('API response status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.text();
-            })
+            .then(response => response.text())
             .then(data => {
-                console.log('API response:', data);
+                console.log('✅ API response:', data);
                 resultElement.innerHTML += `<div class="api-response"><p>API Response: ${data}</p></div>`;
             })
             .catch(error => {
-                console.error('API error:', error);
-                // Show error but also add mock response for demo purposes
+                console.error('❌ API error:', error);
                 resultElement.innerHTML += `<div class="api-error"><p>API Error: ${error.message}</p></div>`;
-                resultElement.innerHTML += `<div class="api-response"><p>Mock API Response (Demo): Hello from service-b! Your trace has been captured.</p>
-                <p><em>Note: This is a simulated response for demonstration purposes. The actual backend service may not be available.</em></p></div>`;
+            })
+            .finally(() => {
+                span.end();
+                provider.forceFlush().then(() => console.log("✅ Traces flushed to Tempo!"))
+                .catch(err => console.error("❌ Trace export failed:", err));
             });
         }
-        
-        // Page load timer
-        let startTime = new Date();
-        setInterval(() => {
-            const seconds = Math.floor((new Date() - startTime) / 1000);
-            document.getElementById('pageTimer').textContent = `You've been on this page for ${seconds.toFixed(2)} seconds`;
-        }, 1000);
-        
+
+        // ✅ Attach event listener
+        document.getElementById('traceButton').addEventListener('click', handleButtonClick);
+
         console.log('Frontend app initialized');
     </script>
 </body>
