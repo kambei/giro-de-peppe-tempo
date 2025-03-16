@@ -102,9 +102,8 @@
 
         // ✅ Configure OTLP Exporter (Send traces to Tempo)
         const otlpExporter = new OTLPTraceExporter({
-            url: 'http://localhost:4318/v1/traces', // Ensure Tempo is reachable
+            url: `${window.location.origin}/api/v1/traces`, // Uses Nginx to proxy the request
         });
-
         provider.addSpanProcessor(new BatchSpanProcessor(otlpExporter)); // Send traces to Tempo
         provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter())); // Debugging
 
@@ -147,7 +146,7 @@
             `;
 
             // ✅ Send API request with traceparent header
-            fetch('http://localhost:1666/hello', {
+            fetch('/api/hello', {
                 headers: { 'traceparent': traceparent }
             })
             .then(response => response.text())
