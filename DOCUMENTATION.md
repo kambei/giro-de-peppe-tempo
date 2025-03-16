@@ -41,6 +41,11 @@ The project implements a distributed system with multiple services that communic
    - Exposes HTTP endpoints
    - Instruments traces with OpenTelemetry
 
+5. **Frontend** - Web interface that:
+   - Provides a user interface for interacting with the system
+   - Instruments browser traces with OpenTelemetry
+   - Proxies requests to backend services
+
 #### Infrastructure
 
 1. **Tempo** - Distributed tracing backend that:
@@ -60,12 +65,13 @@ The project implements a distributed system with multiple services that communic
 
 The typical request flow through the system is:
 
-1. Client sends a request to Service B
-2. Service B processes the request and calls Service A
-3. Service A calls the Go Service
-4. Each service contributes spans to the trace
-5. All spans are sent to Tempo
-6. Traces can be visualized in Grafana
+1. Client interacts with the Frontend or sends a direct request to Service B
+2. Frontend proxies the request to Service B
+3. Service B processes the request and calls Service A
+4. Service A calls the Go Service
+5. Each service contributes spans to the trace
+6. All spans are sent to Tempo
+7. Traces can be visualized in Grafana
 
 ## Tracing Implementation
 
@@ -120,7 +126,11 @@ This ensures that spans from different services are correctly associated with th
    curl http://localhost:1666/hello
    ```
 
-2. Access Grafana at [http://localhost:3000](http://localhost:3000)
+2. Access the frontend at [http://localhost:8090](http://localhost:8090)
+   - Click the "Click Me" button to generate a trace from the browser
+   - The trace will include spans from the frontend and backend services
+
+3. Access Grafana at [http://localhost:3000](http://localhost:3000)
 
 3. Configure Tempo as a data source in Grafana:
    - URL: http://tempo:3200
@@ -196,6 +206,20 @@ Key file:
 
 Configuration:
 - OpenTelemetry exporter endpoint: `tempo:4318`
+
+### Frontend
+
+The Frontend is a web interface implemented using HTML, JavaScript, and CSS, served by Nginx. It provides a user interface for interacting with the system and demonstrates frontend tracing with OpenTelemetry.
+
+Key files:
+- `frontend/src/index.html`: Main HTML page
+- `frontend/src/app.js`: JavaScript for OpenTelemetry instrumentation
+- `frontend/nginx/nginx.conf`: Nginx configuration for proxying requests
+
+Configuration:
+- Exposed on port: `8090`
+- Proxies API requests to Service B
+- Proxies trace data to Tempo
 
 ### Tempo
 

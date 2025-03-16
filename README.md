@@ -17,6 +17,8 @@ docker compose up -d
 curl http://localhost:1666/hello
 ```
 
+- Access the frontend at [http://localhost:8090](http://localhost:8090) to interact with the application and generate traces from the browser.
+   
 - Go to Grafana ([http://localhost:3000](http://localhost:3000)), add Tempo datasource ([http://tempo:3200](http://tempo:3200)) and Enjoy the traces in the Explore view!
 
 
